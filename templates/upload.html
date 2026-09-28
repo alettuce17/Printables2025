@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload File</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='fontawesome/css/all.min.css') }}">
+    <style>
+        :root {
+            --primary-color: #007bff;
+            --primary-hover-color: #0056b3;
+            --secondary-color: #6c757d;
+            --light-bg: #f8f9fa;
+            --white-bg: #ffffff;
+            --text-color: #333;
+            --text-muted-color: #6c757d;
+            --border-color: #dee2e6;
+            --success-color: #28a745;
+            --error-color: #dc3545;
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            --border-radius: 0.5rem;
+        }
+        body {
+            font-family: var(--font-family);
+            background-color: var(--light-bg);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 1rem;
+            box-sizing: border-box;
+            text-align: center;
+        }
+        .container {
+            background-color: var(--white-bg);
+            padding: 2rem;
+            border-radius: var(--border-radius);
+            box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.05);
+            max-width: 450px;
+            width: 100%;
+        }
+        h1 {
+            color: var(--primary-color);
+            margin-top: 0;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+        }
+        p {
+            color: var(--text-muted-color);
+            margin-bottom: 2rem;
+        }
+        /* MODIFIED: Changed to flexbox for better alignment */
+        .upload-area {
+            border: 2px dashed var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem; /* Adds space between icon and text */
+        }
+        .upload-area:hover {
+            background-color: #f1faff;
+            border-color: var(--primary-color);
+        }
+        .upload-area i {
+            font-size: 3rem;
+            color: var(--primary-color);
+        }
+        .upload-area p {
+            margin-bottom: 0;
+            font-weight: 500;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        #file-info {
+            margin-top: 1.5rem;
+            text-align: left;
+        }
+        #file-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        #file-list li {
+            padding: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.9rem;
+        }
+        .action-btn {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            margin-top: 1.5rem;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        .action-btn:hover {
+            background-color: var(--primary-hover-color);
+        }
+        .action-btn:disabled {
+            background-color: #adb5bd;
+            cursor: not-allowed;
+        }
+        #message {
+            margin-top: 1.5rem;
+            font-weight: bold;
+            padding: 0.75rem;
+            border-radius: var(--border-radius);
+            display: none; /* Hidden by default */
+        }
+        #message.success {
+            display: block;
+            background-color: #d4edda;
+            color: #155724;
+        }
+        #message.error {
+            display: block;
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        #success-container h1 i {
+            color: var(--success-color);
+        }
+        #closeButton {
+            background-color: var(--secondary-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="upload-container">
+            <h1><i class="fas fa-wifi"></i> Wi-Fi Upload</h1>
+            <p>You can select up to 5 files to send to the kiosk.</p>
+            
+            <form id="uploadForm" method="post" enctype="multipart/form-data">
+                <label for="fileInput" class="upload-area">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <p>Tap here to choose files</p>
+                </label>
+                <input type="file" id="fileInput" name="files" accept=".pdf,.docx,.xlsx" multiple>
+                
+                <div id="file-info" style="display: none;">
+                    <p>Selected Files:</p>
+                    <ul id="file-list"></ul>
+                </div>
+
+                <button type="submit" id="uploadButton" class="action-btn" disabled>
+                    <i class="fas fa-paper-plane"></i> Send to Kiosk
+                </button>
+            </form>
+            <div id="message"></div>
+        </div>
+
+        <div id="success-container" style="display: none;">
+            <h1><i class="fas fa-check-circle"></i> Success!</h1>
+            <p id="success-message"></p>
+            <p>You can now close this window and return to the kiosk to continue printing.</p>
+            <button id="closeButton" class="action-btn">Close Window</button>
+        </div>
+    </div>
+
+    <script>
+        const MAX_FILES = 5;
+        const MAX_FILE_SIZE_MB = 25;
+
+        const uploadContainer = document.getElementById('upload-container');
+        const successContainer = document.getElementById('success-container');
+        const uploadForm = document.getElementById('uploadForm');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('file-info');
+        const fileList = document.getElementById('file-list');
+        const uploadButton = document.getElementById('uploadButton');
+        const messageDisplay = document.getElementById('message');
+        const successMessage = document.getElementById('success-message');
+        const closeButton = document.getElementById('closeButton');
+
+        fileInput.addEventListener('change', () => {
+            messageDisplay.style.display = 'none';
+            fileList.innerHTML = '';
+
+            if (fileInput.files.length === 0) {
+                fileInfo.style.display = 'none';
+                uploadButton.disabled = true;
+                return;
+            }
+
+            if (fileInput.files.length > MAX_FILES) {
+                messageDisplay.textContent = `Error: You can only select up to ${MAX_FILES} files.`;
+                messageDisplay.className = 'error';
+                messageDisplay.style.display = 'block';
+                fileInput.value = ''; // Clear selection
+                uploadButton.disabled = true;
+                return;
+            }
+            
+            let allFilesValid = true;
+            Array.from(fileInput.files).forEach(file => {
+                const fileSizeMB = file.size / 1024 / 1024;
+                if (fileSizeMB > MAX_FILE_SIZE_MB) {
+                    messageDisplay.textContent = `Error: File "${file.name}" is too large (${MAX_FILE_SIZE_MB}MB limit).`;
+                    messageDisplay.className = 'error';
+                    messageDisplay.style.display = 'block';
+                    allFilesValid = false;
+                }
+                const listItem = document.createElement('li');
+                listItem.textContent = file.name;
+                fileList.appendChild(listItem);
+            });
+
+            if (!allFilesValid) {
+                fileInput.value = ''; // Clear selection
+                uploadButton.disabled = true;
+                fileInfo.style.display = 'none';
+                return;
+            }
+
+            fileInfo.style.display = 'block';
+            uploadButton.disabled = false;
+        });
+
+        uploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (fileInput.files.length === 0) {
+                messageDisplay.textContent = 'Please choose a file first.';
+                messageDisplay.className = 'error';
+                messageDisplay.style.display = 'block';
+                return;
+            }
+
+            uploadButton.disabled = true;
+            uploadButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+            messageDisplay.style.display = 'none';
+
+            const formData = new FormData();
+            Array.from(fileInput.files).forEach(file => {
+                formData.append('files', file);
+            });
+
+            try {
+                const response = await fetch(window.location.href, {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    successMessage.textContent = result.message;
+                    uploadContainer.style.display = 'none';
+                    successContainer.style.display = 'block';
+                } else {
+                    // Handle session expired or other errors from the server
+                    if (response.status === 403) {
+                         throw new Error(result.error || 'Your session has expired. Please start a new session at the kiosk.');
+                    }
+                    throw new Error(result.error || 'Upload failed.');
+                }
+            } catch (error) {
+                messageDisplay.textContent = error.message;
+                messageDisplay.className = 'error';
+                messageDisplay.style.display = 'block';
+            } finally {
+                uploadButton.disabled = false;
+                uploadButton.innerHTML = '<i class="fas fa-paper-plane"></i> Send to Kiosk';
+            }
+        });
+
+        closeButton.addEventListener('click', () => {
+            window.close();
+            successMessage.textContent = "You can now safely close this browser tab.";
+        });
+    </script>
+</body>
+</html>

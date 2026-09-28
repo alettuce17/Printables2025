@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ shop_name }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="stylesheet"
+href="{{ url_for('static', filename='fontawesome/css/all.min.css') }}">
+<script src="{{ url_for('static', filename='js/qrcode.min.js') }}"></script>
+    <style>
+        .drive-list { list-style: none; padding: 0; margin: 0; }
+        .drive-list li { padding: 1rem; cursor: pointer; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; gap: 1rem; }
+        .drive-list li:last-child { border-bottom: none; }
+        .drive-list li:hover { background-color: #f8f9fa; }
+        .drive-list li.selected { background-color: #e9f5ff; font-weight: bold; color: var(--primary-color); }
+        .drive-list i { color: var(--secondary-color); }
+    </style>
+</head>
+<body>
+
+    <div id="initialStartScreen" class="phase-screen active">
+        <div class="content-center">
+            <div class="logo-icon"></div>
+            <h1>Welcome to {{ shop_name }}</h1>
+            <p>Press the button below to begin your printing session.</p>
+            <button id="initialStartButton" class="action-button large">Start Print</button>
+        </div>
+    </div>
+
+    <div id="fileSourceScreen" class="phase-screen">
+        <div class="content-center">
+            <h2>How would you like to transfer your files?</h2>
+            <p>Please select your preferred method below.</p>
+            <div class="source-selection-container">
+                <button id="usbSourceButton" class="source-button">
+                    <i class="fas fa-usb"></i>
+                    <span>USB Drive</span>
+                </button>
+                <button id="wifiSourceButton" class="source-button">
+                    <i class="fas fa-wifi"></i>
+                    <span>Wi-Fi Upload</span>
+                </button>
+            </div>
+            <div class="button-group">
+                <button id="returnToWelcomeButton" class="action-button secondary"><i class="fas fa-arrow-left"></i> Return</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="wifiUploadScreen" class="phase-screen">
+        <div class="content-center wifi-instructions">
+            <h2>Wi-Fi File Upload</h2>
+            <ol class="instruction-list">
+                <li>On your phone or laptop, connect to the Wi-Fi network named: <br><strong>{{ wifi_ssid }}</strong></li>
+                <li>Scan the QR code below with your camera app.</li>
+                <li>If you can't scan, open a web browser and go to this exact address:</li>
+                <li class="upload-url-container"><strong id="uploadUrl"></strong></li>
+            </ol>
+            <div id="qrcode" class="qr-code-container"></div>
+            <p>Once your files are uploaded, they will appear in the print list. Then you can press Continue.</p>
+            <p class="session-timeout-notice">
+                This screen will time out in <span id="wifiTimeoutCountdown">3:00</span>.
+            </p>
+            <div class="button-group">
+                 <button id="returnToSourceFromWifi" class="action-button secondary"><i class="fas fa-arrow-left"></i> Return</button>
+                 <button id="wifiContinueButton" class="action-button" disabled>
+                    <i class="fas fa-arrow-right"></i> Continue to Printing
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <div id="optionalInfoScreen" class="phase-screen">
+        <div class="content-center info-form-container">
+            <h2>Student Information (Optional)</h2>
+            <p>You can provide your details for record-keeping, or skip to print as a guest.</p>
+            <div class="form-group">
+                <label for="optionalStudentId">Student ID:</label>
+                <input type="text" id="optionalStudentId" placeholder="e.g., S2024-001">
+            </div>
+            <div class="form-group">
+                <label for="optionalFullName">Full Name:</label>
+                <input type="text" id="optionalFullName" placeholder="e.g., Alex Doe">
+            </div>
+            <div class="form-group">
+                <label for="optionalDepartment">Department / College:</label>
+                <select id="optionalDepartment">
+                    <option value="">Select a Department...</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="optionalCourse">Course / Program:</label>
+                <select id="optionalCourse" disabled>
+                    <option value="">Select a Course...</option>
+                </select>
+            </div>
+            <div id="optionalInfoMessage" class="message-area hidden"></div>
+            <div class="button-group">
+                <button id="returnToFileSourceButton" class="action-button secondary"><i class="fas fa-arrow-left"></i> Return</button>
+                <button id="proceedWithInfoButton" class="action-button">Proceed</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="appContainer" class="phase-screen">
+        <div class="container-main-app">
+            <header class="app-header">
+                <div id="userWelcomeMessage" class="user-welcome"></div>
+                <div class="header-title-area">
+                    <i class="fas fa-print header-icon"></i>
+                    <h1>Print Dashboard</h1>
+                </div>
+                <div class="header-controls">
+                     <p class="session-timeout-notice">
+                         Session ends in <span id="appTimeoutCountdown">3:00</span>
+                    </p>
+                    <div class="button-group">
+                         <button id="returnToSourceFromAppButton" class="action-button secondary"><i class="fas fa-arrow-left"></i> Return</button>
+                         <button id="resetSessionButton" class="action-button" style="background-color: var(--error-color);"><i class="fas fa-power-off"></i> Reset Session</button>
+                    </div>
+                </div>
+            </header>
+
+            <div class="main-content-area">
+                <aside id="fileBrowserPanel" class="file-browser-panel">
+                    <div class="breadcrumb-bar">
+                        <div class="breadcrumb-nav-buttons">
+                            <button id="goBackButton" class="hidden" title="Go Back"><i class="fas fa-arrow-left"></i></button>
+                            <button id="goUpButton" class="hidden" title="Go Up"><i class="fas fa-arrow-up"></i></button>
+                        </div>
+                        <span id="currentPathDisplay">Please start a session.</span>
+                    </div>
+                    <div id="fileListContainer">
+                        <ul id="fileList"></ul>
+                        <p id="emptyFolderMessage" class="hidden">This folder is empty.</p>
+                    </div>
+                </aside>
+                <main class="file-preview-main-panel">
+                    <h2>File Preview</h2>
+                    <div id="preview-wrapper">
+                        <p id="noFilePreviewMessage">Select a file to preview.</p>
+                        <iframe id="pdfPreviewFrame" src="about:blank" title="PDF Preview" class="hidden"></iframe>
+                    </div>
+                </main>
+                <aside class="print-management-panel">
+                    <section class="selected-files-section">
+                        <h2>Selected for Print</h2>
+                        <ul id="selectedFilesList"></ul>
+                        <div class="print-actions">
+                            <p>Files: <span id="selectedFileCount">0</span></p>
+                            <button id="printSelectedButton" class="action-button" disabled><i class="fas fa-print"></i> Calculate Cost & Print</button>
+                        </div>
+                    </section>
+                </aside>
+            </div>
+        </div>
+    </div>
+
+    <div id="transactionSummaryScreen" class="phase-screen">
+        <div class="content-center summary-receipt">
+            <i class="fas fa-check-circle summary-icon"></i>
+            <h2>Transaction Complete</h2>
+            <p>Thank you for using {{ shop_name }}!</p>
+            <div class="receipt-details">
+                <p><strong>Files Printed:</strong> <span id="summaryFileCount">0</span></p>
+                <p><strong>Total Cost:</strong> <span id="summaryTotalCost">₱0.00</span></p>
+            </div>
+            <p class="session-timeout-notice">
+                This session will end in <span id="sessionTimeoutCountdown">30</span> seconds.
+            </p>
+            <div class="button-group">
+                <button id="summaryFinishButton" class="action-button secondary"><i class="fas fa-door-open"></i> Finish Now</button>
+                <button id="summaryReportIssueButton" class="action-button" style="background-color: var(--error-color);"><i class="fas fa-bug"></i> Report an Issue</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overlays and Modals -->
+    <div id="loadingIndicator" class="loading-overlay hidden">
+        <div class="spinner"></div>
+        <p id="loadingMessage">Loading...</p>
+    </div>
+    <div id="errorDisplay" class="error-message global-error hidden"></div>
+
+    <div id="driveSelectionModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2 class="modal-title">Select a Drive</h2>
+            <p>Please choose the drive you want to print from.</p>
+            <div id="driveListContainer" style="margin: 1.5rem 0; max-height: 250px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--border-radius);">
+                <ul id="driveListUl" class="drive-list"></ul>
+                <p id="driveScanMessage" style="padding: 1rem;"></p>
+            </div>
+            <div class="modal-actions">
+                <button id="selectDriveButton" class="action-button" disabled>Select Drive</button>
+                <button id="cancelDriveSelectButton" class="action-button secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="changeModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2 class="modal-title">Print Successful!</h2>
+            <div class="change-details">
+                <p>You have <strong id="changeAmountDue">₱0.00</strong> in change.</p>
+                <p>What would you like to do?</p>
+            </div>
+            <div id="changeModalMessage" class="message-area hidden"></div>
+            <div class="modal-actions">
+                <button id="donateChangeButton" class="action-button secondary">
+                    <i class="fas fa-heart"></i> Donate Change
+                </button>
+                <button id="dispenseChangeButton" class="action-button primary">
+                    <i class="fas fa-coins"></i> Take Change
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="coinPaymentModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2 class="modal-title">Coin Payment</h2>
+            <div id="paymentSummary" class="payment-section">
+                <h3>Order Summary</h3>
+                <p>Files: <strong id="modalFileCount">0</strong> | Pages (est.): <strong id="modalPageCount">0</strong></p>
+                <p class="total-cost">Total Required: <strong id="modalTotalCoinsRequired">0.00</strong></p>
+            </div>
+            <hr class="modal-divider">
+            <div class="coin-input-section payment-section">
+                <h3>Please Insert Coins</h3>
+                <p>Accepted: <strong id="modalCoinsAcceptedDisplay">0.00</strong> | Change: <strong id="modalChangeDue">0.00</strong></p>
+            </div>
+            <div id="paymentModalError" class="message-area modal-error hidden"></div>
+            <div class="modal-actions">
+                <button id="confirmPaymentAndPrintButton" class="action-button primary" disabled>Confirm & Print</button>
+                <button id="cancelPaymentModalButton" class="action-button secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="reportIssueModal" class="modal-overlay hidden">
+         <div class="modal-content">
+            <h2 class="modal-title">Report an Issue</h2>
+            <p>We are sorry you had a problem. Please provide details below so we can assist you.</p>
+            <form id="reportIssueForm">
+                <input type="hidden" id="issueJobId" name="job_id">
+                <input type="hidden" id="issueSessionId" name="session_id">
+
+                <div class="form-group">
+                    <label for="issueErrorType">Type of Issue:</label>
+                    <select id="issueErrorType" name="error_type" required>
+                        <option value="">Select an issue...</option>
+                        <option value="printer_issue">Printer Jammed or Didn't Print</option>
+                        <option value="quality_issue">Print Quality Was Poor</option>
+                        <option value="coin_issue">Coin Machine Took Too Much</option>
+                        <option value="change_issue">Did Not Receive Correct Change</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="issueDescription">Description (Optional):</label>
+                    <textarea id="issueDescription" name="description" rows="2" placeholder="Please provide a brief description of the problem."></textarea>
+                </div>
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="requestRefundCheckbox" name="request_refund">
+                    <label for="requestRefundCheckbox">I would like to request a refund for this transaction.</label>
+                </div>
+                <div id="reportIssueMessage" class="message-area hidden"></div>
+                <div class="modal-actions">
+                    <button type="button" id="cancelReportIssueButton" class="action-button secondary">Cancel</button>
+                    <button type="submit" class="action-button primary">Submit Report</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div id="contactDeveloperModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2 class="modal-title">Contact Support</h2>
+            <p>To help us solve your issue quickly, please take a picture or video of this screen and send it to us on Messenger.</p>
+            
+            <div class="contact-details-container">
+                <div id="contactQrCode"></div>
+                <div class="session-details">
+                    <h4>Your Session Information:</h4>
+                    <p id="sessionDetailsForReport">Please start a session to see details.</p>
+                    <small>Scan the QR code with your phone to contact us directly.</small>
+                </div>
+            </div>
+
+            <div class="modal-actions" style="justify-content: center;">
+                <button id="closeContactModalButton" class="action-button secondary">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- NEW: Paper Instruction Modal -->
+    <div id="paperInstructionModal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 500px; text-align: center;">
+            <h2 class="modal-title"><i class="fas fa-file-import" style="color: var(--primary-color);"></i> Please Insert Your Paper</h2>
+            <p style="font-size: 1.1rem; margin: 1rem 0;">
+                Before proceeding to payment, please insert your paper into the printer's manual feed tray.
+            </p>
+            <div style="text-align: left; background-color: var(--light-bg); padding: 15px; border-radius: var(--border-radius);">
+                <strong>Supported Paper Sizes:</strong>
+                <ul style="margin: 10px 0 0 20px;">
+                    <li>Short (8.5" x 11")</li>
+                    <li>Long (8.5" x 13")</li>
+                    <li>A4 (8.27" x 11.69")</li>
+                </ul>
+            </div>
+            <div class="modal-actions" style="justify-content: center; margin-top: 1.5rem;">
+                <button id="proceedToPaymentButton" class="action-button">I have inserted my paper</button>
+                <button id="cancelInstructionButton" class="action-button secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <button id="contactDeveloperBtn" class="floating-contact-btn">
+        <i class="fas fa-question-circle"></i>
+        <span>Help</span>
+    </button>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Print System Admin Panel</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="admin-container">
+        <nav class="admin-nav">
+            <h1>Admin Panel</h1>
+            <ul>
+                <li><a href="#dashboard" class="nav-link active-link" data-target="dashboardSection"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                <li><a href="#reports" class="nav-link" data-target="reportsSection"><i class="fas fa-chart-line"></i> Reports</a></li>
+                <li><a href="#users" class="nav-link" data-target="usersSection"><i class="fas fa-users"></i> Users</a></li>
+                <li><a href="#printJobs" class="nav-link" data-target="printJobsSection"><i class="fas fa-print"></i> Print Jobs</a></li>
+                <li><a href="#transactions" class="nav-link" data-target="transactionsSection"><i class="fas fa-file-invoice-dollar"></i> Transactions</a></li>
+                <li><a href="#pricing" class="nav-link" data-target="pricingSection"><i class="fas fa-dollar-sign"></i> Pricing</a></li>
+                <li><a href="#settings" class="nav-link" data-target="settingsSection"><i class="fas fa-cogs"></i> System Settings</a></li>
+                <li><a href="#errorReports" class="nav-link" data-target="errorReportsSection"><i class="fas fa-bug"></i> Error Reports</a></li>
+                <li><a href="#refundRequests" class="nav-link" data-target="refundRequestsSection"><i class="fas fa-undo-alt"></i> Refund Requests</a></li>
+                <li><a href="#adminLogs" class="nav-link" data-target="adminLogsSection"><i class="fas fa-clipboard-list"></i> Admin Logs</a></li>
+            </ul>
+            <button id="logoutButton" class="button" style="width: 80%; margin: 20px auto; display: block;">Logout</button>
+        </nav>
+
+        <main class="admin-main-content">
+            <section id="dashboardSection" class="admin-section active-section">
+                <h2>Dashboard</h2>
+                <div class="dashboard-summary-container">
+                    <div class="summary-card">
+                        <i class="fas fa-file-invoice-dollar"></i>
+                        <div class="card-content">
+                            <span class="card-title">Total Revenue</span>
+                            <span class="card-value" id="summaryRevenue">₱0.00</span>
+                        </div>
+                    </div>
+                    <div class="summary-card">
+                        <i class="fas fa-print"></i>
+                        <div class="card-content">
+                            <span class="card-title">Total Print Jobs</span>
+                            <span class="card-value" id="summaryPrintJobs">0</span>
+                        </div>
+                    </div>
+                    <div class="summary-card">
+                        <i class="fas fa-bug"></i>
+                        <div class="card-content">
+                            <span class="card-title">Unresolved Errors</span>
+                            <span class="card-value" id="summaryErrors">0</span>
+                        </div>
+                    </div>
+                    <div class="summary-card">
+                        <i class="fas fa-undo-alt"></i>
+                        <div class="card-content">
+                            <span class="card-title">Pending Refunds</span>
+                            <span class="card-value" id="summaryRefunds">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-grid">
+                    <div class="printer-status-card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-server"></i> Printer Status</h3>
+                            <button id="refreshPrintersButton" class="button small-button" title="Refresh Printer List"><i class="fas fa-sync-alt"></i> Refresh</button>
+                        </div>
+                        <div id="printerStatusContainer">
+                            <ul></ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-grid" style="margin-top: 25px;">
+                    <div class="printer-status-card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-broom"></i> System Maintenance</h3>
+                        </div>
+                        <div id="maintenanceContainer">
+                            <p>Permanently delete all temporary session files and session folders from the uploads directory. This cannot be undone.</p>
+                            <button id="showClearUploadsModalButton" class="button" style="background-color: #e74c3c; color: white;">
+                                <i class="fas fa-trash-alt"></i> Clear All Uploaded Files
+                            </button>
+                            <div id="clearUploadsMessage" style="margin-top: 15px; font-weight: bold;"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="reportsSection" class="admin-section">
+                <h2>Generate Reports</h2>
+                <div class="report-controls">
+                    <div class="form-group">
+                        <label for="reportType">Report Type</label>
+                        <select id="reportType">
+                            <option value="sales">Sales Report</option>
+                            <option value="donations">Donations Report</option>
+                            <option value="print_jobs">Print Jobs Log</option>
+                            <option value="users">User Report by Department</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="departmentFilterContainer" style="display: none;">
+                        <label for="departmentSelect">Department</label>
+                        <select id="departmentSelect">
+                            <option value="all">All Departments</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="startDate">Start Date</label>
+                        <input type="date" id="startDate">
+                    </div>
+                    <div class="form-group">
+                        <label for="endDate">End Date</label>
+                        <input type="date" id="endDate">
+                    </div>
+                    <button id="generateReportButton" class="button">Generate Report</button>
+                </div>
+
+                <div id="report-output" class="hidden">
+                    <div class="report-summary">
+                        <h3 id="summaryTitle"></h3>
+                        <p id="summaryValue"></p>
+                    </div>
+                    <div class="table-container">
+                        <table id="reportTable">
+                            <thead></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    <div class="developer-contact-card">
+                        <h3>Need Help with a Report?</h3>
+                        <p>To provide the best experience, we're here to help. If you encounter an issue or have a question about this report, please contact us.</p>
+                        <a href="#" id="contactDeveloperLink" class="button" target="_blank">
+                            <i class="fas fa-comment-dots"></i> Contact Developer
+                        </a>
+                    </div>
+                </div>
+            </section>
+
+            <section id="usersSection" class="admin-section">
+                <h2>User Management</h2>
+                <table><thead></thead><tbody></tbody></table>
+            </section>
+            
+            <section id="printJobsSection" class="admin-section">
+                <h2>Print Job Management</h2>
+                <table><thead></thead><tbody></tbody></table>
+            </section>
+            
+            <section id="transactionsSection" class="admin-section">
+                <h2>Transactions</h2>
+                <table><thead></thead><tbody></tbody></table>
+            </section>
+            
+            <section id="pricingSection" class="admin-section">
+                <h2>Pricing Management</h2>
+                <form id="pricingForm">
+                    <div id="pricingTiersContainer"></div>
+                    <button type="submit" class="button">Save Pricing Changes</button>
+                </form>
+                <div id="pricingUpdateMessage" style="margin-top: 15px;"></div>
+            </section>
+
+            <section id="settingsSection" class="admin-section">
+                <h2>System Settings</h2>
+                <form id="systemSettingsForm">
+                    <h3>General</h3>
+                    <div class="form-group">
+                        <label for="kioskName">Kiosk Name</label>
+                        <input type="text" id="kioskName" name="kiosk_name" placeholder="e.g., Library Quick Print">
+                        <small>The name displayed on the main user screen.</small>
+                    </div>
+                    <hr>
+                    <h3>File Upload Limits</h3>
+                     <div class="form-group">
+                        <label for="maxWifiFiles">Max Wi-Fi Files per Upload</label>
+                        <input type="number" id="maxWifiFiles" name="max_wifi_files" min="1" max="20">
+                        <small>The maximum number of files a user can upload in a single Wi-Fi session.</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="maxFileSizeMb">Max File Size (MB)</label>
+                        <input type="number" id="maxFileSizeMb" name="max_file_size_mb" min="1" max="100">
+                        <small>The maximum size for any single file uploaded via Wi-Fi.</small>
+                    </div>
+                    <hr>
+                    <h3>Printer Configuration</h3>
+                    <div class="form-group">
+                        <label for="defaultPrinterName">Default Printer</label>
+                        <select id="defaultPrinterName" name="default_printer_name">
+                            <option value="">-- System Default --</option>
+                        </select>
+                        <small>Select the printer to use for all print jobs. Leave as "System Default" to use the OS default printer.</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="sumatraPath">SumatraPDF Path (Windows Only)</label>
+                        <input type="text" id="sumatraPath" name="sumatra_pdf_path" placeholder="C:\Path\To\SumatraPDF.exe">
+                        <small>The full path to the SumatraPDF.exe file, required for printing on Windows.</small>
+                    </div>
+                    <button type="submit" class="button">Save Settings</button>
+                </form>
+                <div id="settingsUpdateMessage" style="margin-top: 15px; font-weight: bold;"></div>
+            </section>
+
+            <section id="errorReportsSection" class="admin-section">
+                <h2>Error Reports</h2>
+                <table><thead></thead><tbody></tbody></table>
+            </section>
+            
+            <section id="refundRequestsSection" class="admin-section">
+                <h2>Refund Requests</h2>
+                <table><thead></thead><tbody></tbody></table>
+            </section>
+            
+            <section id="adminLogsSection" class="admin-section">
+                <h2>Admin & Maintenance Logs</h2>
+                <table><thead></thead><tbody></tbody></table>
+            </section>
+        </main>
+    </div>
+
+    <div id="confirmationModal" class="modal-overlay hidden" style="background-color: rgba(0,0,0,0.6); z-index: 1000;">
+        <div class="modal-content" style="max-width: 450px; text-align: center;">
+            <h2 id="modalTitle" style="color: #e74c3c;">Are you sure?</h2>
+            <p id="modalMessage">This action will delete all temporary session files and cached documents. It is permanent and cannot be undone.</p>
+            <div class="modal-actions" style="justify-content: center; margin-top: 25px;">
+                <button id="modalConfirmButton" class="button" style="background-color: #e74c3c;">Yes, Delete Everything</button>
+                <button id="modalCancelButton" class="button" style="background-color: #7f8c8d;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/admin_script.js') }}"></script>
+</body>
+</html>
